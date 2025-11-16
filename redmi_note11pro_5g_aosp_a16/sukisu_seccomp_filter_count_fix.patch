@@ -1,0 +1,12 @@
+diff --git a/kernel/app_profile.c b/kernel/app_profile.c
+index 0542bd77..7f8abee8 100644
+--- a/kernel/app_profile.c
++++ b/kernel/app_profile.c
+@@ -82,7 +82,6 @@ void disable_seccomp(void)
+ #ifdef CONFIG_SECCOMP
+ 	current->seccomp.mode = 0;
+ 	current->seccomp.filter = NULL;
+-	atomic_set(&current->seccomp.filter_count, 0);
+ #else
+ #endif
+ }
