@@ -1,5 +1,5 @@
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 4374e6dbce16..94ee7b649cb0 100644
+index 489696f72caa..0c64a66f6389 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
 @@ -27,10 +27,21 @@
@@ -23,8 +23,9 @@ index 4374e6dbce16..94ee7b649cb0 100644
 +
  /* Maximum number of mounts in a mount namespace */
  unsigned int sysctl_mount_max __read_mostly = 100000;
+
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index 132edcbe187f..c0ecb25f485a 100644
+index ec9d8987bc30..c0ecb25f485a 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
 @@ -21,6 +21,9 @@
@@ -36,12 +37,13 @@ index 132edcbe187f..c0ecb25f485a 100644
 +#endif // #if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
  #include <linux/io_record.h>
  
- #include <asm/elf.h> 
+ #include <asm/elf.h>
+
 diff --git a/kernel/sys.c b/kernel/sys.c
-index a6c7efb9204d..114dbaff855d 100644
+index 71a63786d458..0fd8fad5d92a 100644
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
-@@ -1191,36 +1191,20 @@ static int override_release(char __user *release, size_t len)
+@@ -1182,35 +1182,19 @@ static int override_release(char __user *release, size_t len)
  	return ret;
  }
  
@@ -78,11 +80,10 @@ index a6c7efb9204d..114dbaff855d 100644
 -				 current->comm, current->pid, tmp.release);
 -		}
 -	}
--#endif
-+	#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
-+		if (static_branch_likely(&susfs_is_uname_spoof_buffer_set))
-+			susfs_spoof_uname(&tmp);
-+	#endif
++#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
++	if (static_branch_likely(&susfs_is_uname_spoof_buffer_set))
++		susfs_spoof_uname(&tmp);
+ #endif
  	up_read(&uts_sem);
  	if (copy_to_user(name, &tmp, sizeof(tmp)))
- 		return -EFAULT;
+		return -EFAULT;
