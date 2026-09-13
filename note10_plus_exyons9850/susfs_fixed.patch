@@ -1,3 +1,42 @@
+diff --git a/fs/namespace.c b/fs/namespace.c
+index ce63f66..164e05d 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -27,6 +27,9 @@
+ #include <linux/task_work.h>
+ #include <linux/sched/task.h>
+ #include <linux/fslog.h>
++#ifdef CONFIG_KSU_SUSFS
++#include <linux/susfs_def.h>
++#endif // #ifdef CONFIG_KSU_SUSFS
+ 
+ #ifdef CONFIG_KDP_NS
+ #include <linux/kdp.h>
+@@ -35,6 +38,14 @@
+ #include "pnode.h"
+ #include "internal.h"
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++extern bool susfs_is_current_ksu_domain(void);
++extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;
++
++#define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
++
++#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++
+ /* Maximum number of mounts in a mount namespace */
+ unsigned int sysctl_mount_max __read_mostly = 100000;
+ 
+@@ -3608,6 +3619,9 @@ struct mnt_namespace *copy_mnt_ns(unsigned long flags, struct mnt_namespace *ns,
+ 	copy_flags = CL_COPY_UNBINDABLE | CL_EXPIRE;
+ 	if (user_ns != ns->user_ns)
+ 		copy_flags |= CL_SHARED_TO_SLAVE | CL_UNPRIVILEGED;
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++	copy_flags |= CL_COPY_MNT_NS;
++#endif
+ #ifdef CONFIG_KDP_NS
+ 	new = copy_tree(old, old->mnt->mnt_root, copy_flags);
+ #else
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 index 0c2b495..fff0a17 100644
 --- a/fs/proc/task_mmu.c
