@@ -1,14 +1,14 @@
 diff --git a/fs/namespace.c b/fs/namespace.c
-index f1cfc57..c394557 100644
+index 5dc58b6..ae0714c 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
 @@ -27,10 +27,21 @@
  #include <linux/task_work.h>
  #include <linux/sched/task.h>
  #include <linux/fs_context.h>
-+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++#ifdef CONFIG_KSU_SUSFS
 +#include <linux/susfs_def.h>
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++#endif // #ifdef CONFIG_KSU_SUSFS
  
  #include "pnode.h"
  #include "internal.h"
@@ -24,7 +24,7 @@ index f1cfc57..c394557 100644
  /* Maximum number of mounts in a mount namespace */
  unsigned int sysctl_mount_max __read_mostly = 100000;
  
-@@ -1079,7 +1090,22 @@ struct vfsmount *vfs_create_mount(struct fs_context *fc)
+@@ -1091,7 +1102,22 @@ struct vfsmount *vfs_create_mount(struct fs_context *fc)
  		return ERR_PTR(-EINVAL);
  	sb = fc->root->d_sb;
  
@@ -47,11 +47,41 @@ index f1cfc57..c394557 100644
  	if (!mnt)
  		return ERR_PTR(-ENOMEM);
  
+diff --git a/fs/proc/cmdline.c b/fs/proc/cmdline.c
+index 5758cf8..37f14d2 100644
+--- a/fs/proc/cmdline.c
++++ b/fs/proc/cmdline.c
+@@ -12,6 +12,11 @@
+ #define INITRAMFS_STR_REPLACE "want_initramf"
+ #define INITRAMFS_STR_LEN (sizeof(INITRAMFS_STR_FIND) - 1)
+ 
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++extern struct static_key_false susfs_is_fake_cmdline_or_bootconfig_buffer_set;
++extern void susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
++#endif
++
+ static char proc_command_line[COMMAND_LINE_SIZE];
+ 
+ static void proc_command_line_init(void) {
+@@ -29,6 +34,13 @@ static void proc_command_line_init(void) {
+ 
+ static int cmdline_proc_show(struct seq_file *m, void *v)
+ {
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++	if (static_branch_likely(&susfs_is_fake_cmdline_or_bootconfig_buffer_set)) {
++		susfs_spoof_cmdline_or_bootconfig(m);
++		seq_putc(m, '\n');
++		return 0;
++	}
++#endif
+ #ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
+ 	seq_puts(m, proc_command_line);
+ #else
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index e959f83..be911b7 100644
+index 2fddfb4..83e1b47 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
-@@ -1678,7 +1678,15 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
+@@ -1674,7 +1674,15 @@ static ssize_t pagemap_read(struct file *file, char __user *buf,
  		ret = mmap_read_lock_killable(mm);
  		if (ret)
  			goto out_free;
@@ -67,3 +97,24 @@ index e959f83..be911b7 100644
  		mmap_read_unlock(mm);
  		start_vaddr = end;
  
+diff --git a/fs/super.c b/fs/super.c
+index d9a5710..e2b7614 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -37,8 +37,16 @@
+ #include <linux/lockdep.h>
+ #include <linux/user_namespace.h>
+ #include <linux/fs_context.h>
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++#include <linux/susfs_def.h>
++#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
+ #include "internal.h"
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++extern bool susfs_is_current_ksu_domain(void);
++extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;
++#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++
+ static int thaw_super_locked(struct super_block *sb);
+ 
+ static LIST_HEAD(super_blocks);
