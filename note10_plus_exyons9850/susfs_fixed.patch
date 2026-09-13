@@ -37,6 +37,20 @@ index ce63f66..164e05d 100644
  #ifdef CONFIG_KDP_NS
  	new = copy_tree(old, old->mnt->mnt_root, copy_flags);
  #else
+diff --git a/fs/proc/base.c b/fs/proc/base.c
+index e5980d8..dffcea2 100644
+--- a/fs/proc/base.c
++++ b/fs/proc/base.c
+@@ -96,6 +96,9 @@
+ #include <linux/cpufreq_times.h>
+ #include <linux/task_integrity.h>
+ #include <linux/proca.h>
++#if defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
++#include <linux/susfs_def.h>
++#endif // #if defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
+ #ifdef CONFIG_HARDWALL
+ #include <asm/hardwall.h>
+ #endif
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 index 0c2b495..fff0a17 100644
 --- a/fs/proc/task_mmu.c
