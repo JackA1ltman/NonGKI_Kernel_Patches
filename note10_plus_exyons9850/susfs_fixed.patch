@@ -51,6 +51,36 @@ index e5980d8..dffcea2 100644
  #ifdef CONFIG_HARDWALL
  #include <asm/hardwall.h>
  #endif
+diff --git a/fs/proc/cmdline.c b/fs/proc/cmdline.c
+index 38437f5..78d7cfb 100644
+--- a/fs/proc/cmdline.c
++++ b/fs/proc/cmdline.c
+@@ -5,6 +5,11 @@
+ #include <linux/seq_file.h>
+ #include <asm/setup.h>
+ 
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++extern struct static_key_false susfs_is_fake_cmdline_or_bootconfig_buffer_set;
++extern void susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
++#endif
++
+ enum {
+ 	FLAG_DELETE = 0,
+ 	FLAG_REPLACE,
+@@ -14,6 +19,13 @@ static char new_command_line[COMMAND_LINE_SIZE];
+ 
+ static int cmdline_proc_show(struct seq_file *m, void *v)
+ {
++#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
++	if (static_branch_likely(&susfs_is_fake_cmdline_or_bootconfig_buffer_set)) {
++		susfs_spoof_cmdline_or_bootconfig(m);
++		seq_putc(m, '\n');
++		return 0;
++	}
++#endif
+ 	seq_puts(m, new_command_line);
+ 	seq_putc(m, '\n');
+ 	return 0;
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 index 0c2b495..fff0a17 100644
 --- a/fs/proc/task_mmu.c
