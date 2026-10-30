@@ -1,34 +1,5 @@
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 12641c5..72f8b74 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -26,10 +26,24 @@
- #include <linux/bootmem.h>
- #include <linux/task_work.h>
- #include <linux/sched/task.h>
-+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+#include <linux/susfs_def.h>
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
- 
- #include "pnode.h"
- #include "internal.h"
- 
-+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+extern bool susfs_is_current_ksu_domain(void);
-+extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;
-+
-+#define CL_COPY_MNT_NS BIT(25) /* used by copy_mnt_ns() */
-+
-+static DEFINE_IDA(susfs_mnt_id_ida);
-+static DEFINE_IDA(susfs_mnt_group_ida);
-+
-+#endif // #ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+
- #ifdef CONFIG_OPLUS_SECURE_GUARD
- #ifdef CONFIG_OPLUS_MOUNT_BLOCK
- #ifdef CONFIG_OPLUS_KEVENT_UPLOAD
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
-index bd64e5f..2f7a190 100644
+index 9f69f64..543a48b 100644
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
 @@ -22,6 +22,9 @@
@@ -42,10 +13,10 @@ index bd64e5f..2f7a190 100644
  #include <asm/elf.h>
  #include <asm/tlb.h>
 diff --git a/kernel/sys.c b/kernel/sys.c
-index 4b2d434..45eb6d8 100644
+index beef5d8..04215be 100644
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
-@@ -1240,12 +1240,20 @@ static int override_release(char __user *release, size_t len)
+@@ -1252,6 +1252,10 @@ static int override_release(char __user *release, size_t len)
  	return ret;
  }
  
@@ -56,13 +27,44 @@ index 4b2d434..45eb6d8 100644
  SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
  {
  	struct new_utsname tmp;
- 
- 	down_read(&uts_sem);
- 	memcpy(&tmp, utsname(), sizeof(tmp));
+@@ -1267,6 +1271,10 @@ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
+ 		pr_debug("fake uname: %s release=%s\n",
+ 			 current->comm, tmp.release);
+ 	}
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 +	if (static_branch_likely(&susfs_is_uname_spoof_buffer_set))
 +		susfs_spoof_uname(&tmp);
 +#endif
- 	if (!strncmp(current->comm, "bpfloader", 9) ||
- 	    !strncmp(current->comm, "netbpfload", 10) ||
- 	    !strncmp(current->comm, "netd", 4) ||
+ 	up_read(&uts_sem);
+ 	if (copy_to_user(name, &tmp, sizeof(tmp)))
+ 		return -EFAULT;
+diff --git a/security/selinux/avc.c b/security/selinux/avc.c
+index 186a42c..2850363 100644
+--- a/security/selinux/avc.c
++++ b/security/selinux/avc.c
+@@ -735,11 +735,24 @@ static void avc_audit_post_callback(struct audit_buffer *ab, void *a)
+ 
+ 	rc = security_sid_to_context(sad->state, sad->tsid, &tcontext,
+ 				     &tcontext_len);
++#ifdef CONFIG_KSU_SUSFS
++	if (static_branch_likely(&susfs_is_avc_log_spoofing_enabled)) {
++		if (unlikely(tsid == susfs_ksu_sid)) {
++			if (rc)
++				audit_log_format(ab, " tsid=%d", susfs_priv_app_sid);
++			else
++				audit_log_format(ab, " tcontext=%s", "u:r:priv_app:s0:c512,c768");
++			goto bypass_orig_flow;
++		}
++	}
++#endif
+ 	if (rc)
+ 		audit_log_format(ab, " tsid=%d", sad->tsid);
+ 	else
+ 		audit_log_format(ab, " tcontext=%s", tcontext);
+-
++#ifdef CONFIG_KSU_SUSFS
++bypass_orig_flow:
++#endif
+ 	tclass = secclass_map[sad->tclass-1].name;
+ 	audit_log_format(ab, " tclass=%s", tclass);
+ 
