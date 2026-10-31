@@ -48,7 +48,7 @@ index 186a42c..2850363 100644
  				     &tcontext_len);
 +#ifdef CONFIG_KSU_SUSFS
 +	if (static_branch_likely(&susfs_is_avc_log_spoofing_enabled)) {
-+		if (unlikely(tsid == susfs_ksu_sid)) {
++		if (unlikely(sad->tsid == susfs_ksu_sid)) {
 +			if (rc)
 +				audit_log_format(ab, " tsid=%d", susfs_priv_app_sid);
 +			else
